@@ -41,10 +41,12 @@ end
 
 
 class Expression
-  attr_accessor :speaker, :speaker_type, :daytime_satifying_configurations
+  attr_accessor :speaker, :speaker_type, :satifying_configurations
   
   def initialize
-    @daytime_satifying_configurations = {}
+    @satifying_configurations = {}
+#    @satifying_configurations{:day} = []
+ #   @satifying_configurations{:night} = []
   end
 
 end
@@ -67,8 +69,9 @@ class Configuration
   end
   
   def to_s
+    s = ""
     @inhabitant_types.keys.each do |key|
-      s += (" #{key} => "+ @inhabitant_types[key].to_s)
+      s  += (" #{key} => "+ @inhabitant_types[key].to_s)
     end
     s
   end
@@ -105,8 +108,10 @@ class SubjectTypeExpression < Expression
     log " satifying_configurations" 
     initial_configurations.each do |c|
       AngelsAndDemons.daytime_types.each do |daytime|
-        log "adding #{c} #{daytime}" 
-        self.satifying_configurations{daytime} << c if satified?(c.inhabitant_type(self.speaker), c.inhabitant_type(@subject), daytime)
+        if satified?(c.inhabitant_type(self.speaker), c.inhabitant_type(@subject), daytime)
+          log "adding #{c} #{daytime}" 
+          self.satifying_configurations{daytime} << c 
+        end
       end
     end
    end
