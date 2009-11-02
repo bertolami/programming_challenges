@@ -9,7 +9,7 @@ class AngelsAndDemons
   def self.inhabitant_types
     [:angel, :demon, :human]
   end
-  
+
   def self.daytime_types
     [:day, :night]
   end
@@ -17,7 +17,7 @@ class AngelsAndDemons
   def self.expression_from_string string
     (speaker, rest) = string.split ':'
     negate = rest.include? "not"
-    rest.delete "not" if negate
+    rest = rest.delete 'not' if negate
     if rest.include? "is a"
       (subject, type) = rest.split " is a "
       SubjectTypeExpression.new speaker, subject, type, negate
@@ -30,32 +30,21 @@ class AngelsAndDemons
       subject = rest.split(" ").shift
       SubjectLyingExpression.new speaker, subject, negate
     elsif rest.include? "It is"
-      daytime = rest.split(" ").shift
+      daytime = rest.split(" ").pop
       DayTimeExpression.new speaker, daytime
     else
-      puts "NOT ABLE TO PARSE #{string}"
+      puts "NOT ABLE TO PARSE #{rest}"
     end
   end
 end
 
-
-
-class Expression
-  attr_accessor :speaker, :speaker_type, :satifying_configurations
-  
-  def initialize
-    @satifying_configurations = {}
-#    @satifying_configurations{:day} = []
- #   @satifying_configurations{:night} = []
-  end
-
-end
-
 class Configuration
-  def initialize inhabitant_types
+  attr_reader :daytime, :inhabitant_types
+  def initialize inhabitant_types, daytime
     @inhabitant_types = inhabitant_types
+    @daytime = daytime
   end
-  
+
   def inhabitants
     @inhabitant_types.keys
   end
@@ -63,101 +52,166 @@ class Configuration
   def inhabitant_type inhabitant
     @inhabitant_types[inhabitant]
   end
-  
-  def == c
-    @inhabitant_types == c.inhabitant_types
+
+  def eql? other
+    @daytime == other.daytime and @inhabitant_types == other.inhabitant_types
   end
-  
+  def hash
+    @daytime.hash
+  end
+
   def to_s
     s = ""
     @inhabitant_types.keys.each do |key|
       s  += (" #{key} => "+ @inhabitant_types[key].to_s)
     end
-    s
+    s += "(#{daytime})"
   end
 end
 
-class SubjectTypeExpression < Expression
-  attr_reader :subject, :subject_type, :negate
-  def initialize(speaker, subject, subject_type, negate)
+class Expression
+  attr_reader :satifying_configurations
+  def initialize
+    @satifying_configurations = []
+  end
+    
+end
+
+class SpeakerExpression < Expression
+  attr_accessor :speaker, :speaker_type
+
+  def initialize speaker
+    super()
+    @speaker = speaker.to_sym
+  end
+  
+  def to_s
+    no_of_solutions = @satifying_configurations.size 
+    if no_of_solutions > 1
+       "multiple solutions " + @satifying_configurations.join(" ").to_s 
+    elsif no_of_solutions == 1
+       "single solution "+ @satifying_configurations.join(" ").to_s
+    else
+       "no solution"
+    end
+  end
+end
+
+class SubjectExpression < SpeakerExpression
+  attr_reader :subject, :negate
+  def initialize speaker, subject, negate
+    super speaker
     @negate = negate
     @subject = subject.to_sym
-    @subject_type = subject_type.to_sym
-    self.speaker = speaker.to_sym
   end
-
+  
   def initial_configurations 
     configurations = []
     affected_inhabitants.each do |speaker|
       AngelsAndDemons.inhabitant_types.each do |speaker_type|  
         affected_inhabitants.each do |subject|
-          AngelsAndDemons.inhabitant_types.each do |subject_type|  
-            configurations << Configuration.new({speaker => speaker_type, subject => subject_type})
+          if(speaker == subject) 
+            configurations << Configuration.new({speaker => speaker_type}, :day)
+            configurations << Configuration.new({speaker => speaker_type}, :night)
+          else
+            AngelsAndDemons.inhabitant_types.each do |subject_type|  
+              configurations << Configuration.new({speaker => speaker_type, subject => subject_type},:day)
+              configurations << Configuration.new({speaker => speaker_type, subject => subject_type},:night)
+            end
           end
         end
       end
     end
     configurations.uniq
   end
-
+  
+  def calculate_satifying_configurations
+    initial_configurations.each do |c|
+      satisfied =  satified?(c.inhabitant_type(self.speaker), c.inhabitant_type(@subject), c.daytime)
+      if((not negate and satisfied) or (negate and not satisfied))
+        @satifying_configurations << c 
+      end
+    end
+  end
+  
   def affected_inhabitants
     [@speaker, @subject].uniq
   end
+end
 
-  def satifying_configurations
-    log " satifying_configurations" 
-    initial_configurations.each do |c|
-      AngelsAndDemons.daytime_types.each do |daytime|
-        if satified?(c.inhabitant_type(self.speaker), c.inhabitant_type(@subject), daytime)
-          log "adding #{c} #{daytime}" 
-          self.satifying_configurations{daytime} << c 
-        end
-      end
-    end
-   end
+class SubjectTypeExpression < SubjectExpression
+  attr_reader :subject, :subject_type
+  def initialize speaker, subject, subject_type, negate
+    super(speaker, subject, negate)  
+    @subject_type = subject_type.to_sym
+    calculate_satifying_configurations
+  end
 
   def satified? speaker, subject, daytime
     (speaker == :angel and subject == @subject_type) or
     (speaker == :demon and subject != @subject_type) or
-    (speaker_type == :human and (subject == @subject_type and daytime == :day or  
-    subject != @subject_type and daytime == :night))
-  end
-
-  def to_s
-    puts satifying_configurations
-    "#{@speaker}: " + (@negate ? "not" : "") + "#{@subject} is a #{@subject_type}"
+    (speaker == :human and subject == @subject_type and daytime == :day) or
+    (speaker == :human and subject != @subject_type and daytime == :night) 
   end
 end
 
 
-class DayTimeExpression < Expression
+class DayTimeExpression < SpeakerExpression
   attr_reader :daytime
-  def initialize(daytime)
+  def initialize speaker, daytime
+    super speaker
     @daytime = daytime.to_sym
+    calculate_satifying_configurations
   end
-  def affected_inhabitants
-    [@speaker]
+  def calculate_satifying_configurations
+     initial_configurations.each do |c|
+       if satified?(c.inhabitant_type(@speaker), c.daytime)
+         @satifying_configurations << c 
+       end
+     end
+   end
+   
+   def satified? speaker, daytime
+     (speaker == :angel and daytime == @daytime) or
+     (speaker == :demon and daytime != @daytime) or
+     (speaker == :human and daytime == @daytime and daytime == :day) or
+     (speaker == :human and daytime != @daytime and daytime == :night) 
+   end
+   
+  def initial_configurations 
+    configurations = []
+    AngelsAndDemons.inhabitant_types.each do |speaker_type|  
+      configurations << Configuration.new({@speaker => speaker_type}, :day)
+      configurations << Configuration.new({@speaker => speaker_type}, :night)   
+    end
+    configurations.uniq
   end
 end
 
-class SubjectLyingExpression < Expression
+class SubjectLyingExpression < SubjectExpression
   attr_reader :subject, :negate
-  def initialize(speaker, subject, negate)
-    self.speaker = speaker.to_sym
-    @subject = subject.to_sym
-    @negate = negate
+  def initialize speaker, subject, negate
+      super(speaker, subject, negate)  
+      calculate_satifying_configurations
   end
-  def affected_inhabitants
-    [@subject, @speaker].uniq
+  
+  def satified? speaker, subject, daytime
+    is_lying = is_lying(subject, daytime)
+    (speaker == :angel and is_lying) or
+    (speaker == :demon and not is_lying) or
+    (speaker == :human and is_lying and daytime == :day) or
+    (speaker == :human and not is_lying and daytime == :night) 
   end
-  def to_s
-    "#{@speaker}: #{@subject} is " + (@negate ? "not" : "") + " lying"
+   
+  def is_lying subject, daytime
+    (subject == :demon) or (subject == :human and daytime == :night)
   end
 end
 
 #(input||=[]) << $_.chomp while gets  
 
-input = ["1", "B: I am an angel", "1", "A: I am lying", "3", "A: B is a human", "B: A is a demon", "A: B is a demon", "0"]
+input = ["1", "A: It is day", "1", "A: I am an angel", "1", "A: I am lying", "3", "A: B is a human", "B: A is a demon", "A: B is a demon", "0"]
+
 while true
   exit if input[index||=0] =~ /^0$/ 
   if input[index||=0] =~ /^\d+$/  
