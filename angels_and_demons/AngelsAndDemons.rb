@@ -16,8 +16,10 @@ class AngelsAndDemons
 
   def self.expression_from_string string
     (speaker, rest) = string.split ':'
+    speaker = speaker.strip
+    rest = rest.strip
     negate = rest.include? "not"
-    rest = rest.delete 'not' if negate
+    rest = rest.gsub /\s+not\s+/, ' ' if negate
     if rest.include? "is a"
       (subject, type) = rest.split " is a "
       SubjectTypeExpression.new speaker, subject, type, negate
@@ -27,10 +29,10 @@ class AngelsAndDemons
     elsif rest.include? "I am lying"
       SubjectLyingExpression.new speaker, speaker, negate
     elsif rest.include? "is lying"
-      subject = rest.split(" ").shift
+      subject = rest.split(" ").shift.strip
       SubjectLyingExpression.new speaker, subject, negate
     elsif rest.include? "It is"
-      daytime = rest.split(" ").pop
+      daytime = rest.split(" ").pop.strip
       DayTimeExpression.new speaker, daytime
     else
       puts "NOT ABLE TO PARSE #{rest}"
@@ -61,11 +63,11 @@ class Configuration
   end
 
   def to_s
-    s = ""
+    s = "|"
     @inhabitant_types.keys.each do |key|
       s  += (" #{key} => "+ @inhabitant_types[key].to_s)
     end
-    s += "(#{daytime})"
+    s += "(#{daytime})|"
   end
 end
 
@@ -74,7 +76,56 @@ class Expression
   def initialize
     @satifying_configurations = []
   end
-    
+  def to_s
+       no_of_solutions = @satifying_configurations.size 
+     if no_of_solutions > 1
+          "multiple solutions " + @satifying_configurations.join(" ").to_s 
+     elsif no_of_solutions == 1
+          "single solution "+ @satifying_configurations.join(" ").to_s
+     else
+        "no solution"
+     end
+   end
+end
+
+class CompositeExpression < Expression
+  def initialize expression_one, expression_two
+    super()
+    @expression_one = expression_one
+    @expression_two = expression_two
+    calculate_satifying_configurations
+  end
+  
+  def calculate_satifying_configurations
+     log "calculating composite configurations"
+     @expression_one.satifying_configurations.each do |c1|
+        @expression_two.satifying_configurations.each do |c2|
+          @satifying_configurations << compose(c1, c2) if satisfied?(c1, c2)
+        end
+     end
+     @satifying_configurations = @satifying_configurations.uniq
+  end
+  
+  def compose c1, c2
+    inhabitants_map = {}
+    (c1.inhabitants + c2.inhabitants).uniq.each do |inhabitant|
+      type = c1.inhabitant_type inhabitant
+      type ||= c2.inhabitant_type inhabitant
+      inhabitants_map[inhabitant] = type
+    end 
+    Configuration.new inhabitants_map, c1.daytime
+  end
+  
+  def satisfied? c1, c2
+    return false unless c1.daytime == c2.daytime
+    (c1.inhabitants + c2.inhabitants).each do |inhabitant|
+      if c1.inhabitant_type(inhabitant) && c2.inhabitant_type(inhabitant) && c1.inhabitant_type(inhabitant) != c2.inhabitant_type(inhabitant)
+        return false
+      end
+    end
+    true
+  end
+  
 end
 
 class SpeakerExpression < Expression
@@ -85,16 +136,7 @@ class SpeakerExpression < Expression
     @speaker = speaker.to_sym
   end
   
-  def to_s
-    no_of_solutions = @satifying_configurations.size 
-    if no_of_solutions > 1
-       "multiple solutions " + @satifying_configurations.join(" ").to_s 
-    elsif no_of_solutions == 1
-       "single solution "+ @satifying_configurations.join(" ").to_s
-    else
-       "no solution"
-    end
-  end
+ 
 end
 
 class SubjectExpression < SpeakerExpression
@@ -215,12 +257,18 @@ input = ["1", "A: It is day", "1", "A: I am an angel", "1", "A: I am lying", "3"
 while true
   exit if input[index||=0] =~ /^0$/ 
   if input[index||=0] =~ /^\d+$/  
-    puts "---- #{input[index]} rules -----"
+    puts "---- #{input[index]} rules -----" 
+    result_expression = nil
     1.upto(input[index].to_i) do |i|
       expression_string = input[index+=1]
       log "INPUT: " + expression_string
       expression = AngelsAndDemons.expression_from_string expression_string
-      log expression
+      if result_expression
+        result_expression = CompositeExpression.new(result_expression, expression) 
+      else
+        result_expression =  expression
+      end
+      log result_expression
     end
     index += 1
   end
