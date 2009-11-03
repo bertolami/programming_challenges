@@ -4,7 +4,11 @@ def log s
   puts s.to_s
 end
 class AngelsAndDemons
-
+  attr_reader :inhabitants
+  
+  def initialize
+    @inhabitants = []
+  end
 
   def self.inhabitant_types
     [:angel, :demon, :human]
@@ -13,15 +17,17 @@ class AngelsAndDemons
   def self.daytime_types
     [:day, :night]
   end
-
-  def self.expression_from_string string
+  
+  def expression_from_string string
     (speaker, rest) = string.split ':'
     speaker = speaker.strip
+    @inhabitants << speaker.to_sym
     rest = rest.strip
     negate = rest.include? "not"
     rest = rest.gsub /\s+not\s+/, ' ' if negate
     if rest.include? "is a"
       (subject, type) = rest.split " is a "
+      @inhabitants << subject.to_sym
       SubjectTypeExpression.new speaker, subject, type, negate
     elsif rest.include? "I am a"
       type = rest.split(" ").pop
@@ -30,6 +36,7 @@ class AngelsAndDemons
       SubjectLyingExpression.new speaker, speaker, negate
     elsif rest.include? "is lying"
       subject = rest.split(" ").shift.strip
+      @inhabitants << subject.to_sym
       SubjectLyingExpression.new speaker, subject, negate
     elsif rest.include? "It is"
       daytime = rest.split(" ").pop.strip
@@ -65,7 +72,7 @@ class Configuration
   def to_s
     s = "|"
     @inhabitant_types.keys.each do |key|
-      s  += (" #{key} => "+ @inhabitant_types[key].to_s)
+      s  += ("#{key} => "+ @inhabitant_types[key].to_s)
     end
     s += "(#{daytime})|"
   end
@@ -76,15 +83,30 @@ class Expression
   def initialize
     @satifying_configurations = []
   end
-  def to_s
-       no_of_solutions = @satifying_configurations.size 
-     if no_of_solutions > 1
-          "multiple solutions " + @satifying_configurations.join(" ").to_s 
-     elsif no_of_solutions == 1
-          "single solution "+ @satifying_configurations.join(" ").to_s
-     else
-        "no solution"
-     end
+
+  def deduct inhabitants
+    if @satifying_configurations.size == 0
+      return  "This is impossible"
+    end
+    facts = []
+    inhabitants.each do |inhabitant|
+      inhabitant_types = []
+      @satifying_configurations.each do |c|
+        inhabitant_types << c.inhabitant_type(inhabitant)
+      end
+      facts << "#{inhabitant} is a #{inhabitant_types}" if inhabitant_types.uniq.size == 1
+    end
+    daytimes = []
+    @satifying_configurations.each do |c|
+      daytimes << c.daytime
+    end
+    facts << "It is a #{daytimes.pop}" if daytimes.uniq.size == 1
+    if facts.size == 0
+      "No facts are deducible"
+    else
+      facts.uniq.join "\n"
+    end
+      
    end
 end
 
@@ -97,7 +119,6 @@ class CompositeExpression < Expression
   end
   
   def calculate_satifying_configurations
-     log "calculating composite configurations"
      @expression_one.satifying_configurations.each do |c1|
         @expression_two.satifying_configurations.each do |c2|
           @satifying_configurations << compose(c1, c2) if satisfied?(c1, c2)
@@ -126,6 +147,9 @@ class CompositeExpression < Expression
     true
   end
   
+  def to_s
+    "#{@expression_one} AND #{@expression_two}"
+  end
 end
 
 class SpeakerExpression < Expression
@@ -182,7 +206,7 @@ class SubjectExpression < SpeakerExpression
 end
 
 class SubjectTypeExpression < SubjectExpression
-  attr_reader :subject, :subject_type
+  attr_reader  :subject_type
   def initialize speaker, subject, subject_type, negate
     super(speaker, subject, negate)  
     @subject_type = subject_type.to_sym
@@ -194,6 +218,12 @@ class SubjectTypeExpression < SubjectExpression
     (speaker == :demon and subject != @subject_type) or
     (speaker == :human and subject == @subject_type and daytime == :day) or
     (speaker == :human and subject != @subject_type and daytime == :night) 
+  end
+  
+  def to_s
+   s = "#{@speaker}: #{@subject} is " 
+   s += "not " if @negate
+   s += "a #{@subject_type}"
   end
 end
 
@@ -228,6 +258,10 @@ class DayTimeExpression < SpeakerExpression
     end
     configurations.uniq
   end
+  
+  def to_s
+    "It is #{@daytime}" 
+  end
 end
 
 class SubjectLyingExpression < SubjectExpression
@@ -248,28 +282,38 @@ class SubjectLyingExpression < SubjectExpression
   def is_lying subject, daytime
     (subject == :demon) or (subject == :human and daytime == :night)
   end
+  
+  def to_s
+   s = "#{@speaker}: #{@subject} is " 
+   s += "not " if @negate
+   s += "lying"
+  end
 end
 
 #(input||=[]) << $_.chomp while gets  
 
-input = ["1", "A: It is day", "1", "A: I am an angel", "1", "A: I am lying", "3", "A: B is a human", "B: A is a demon", "A: B is a demon", "0"]
-
+input = ["1", "B: I am an angel",  "1", "A: I am lying", "1", "M: I am a demon", "3", "A: B is a human", "B: A is a demon", "A: B is a demon", "0"]
+counter = 1
 while true
   exit if input[index||=0] =~ /^0$/ 
   if input[index||=0] =~ /^\d+$/  
-    puts "---- #{input[index]} rules -----" 
+    log "Conversation \##{counter}" 
+    engine = AngelsAndDemons.new
     result_expression = nil
     1.upto(input[index].to_i) do |i|
       expression_string = input[index+=1]
-      log "INPUT: " + expression_string
-      expression = AngelsAndDemons.expression_from_string expression_string
+     # log "INPUT: " + expression_string
+      expression = engine.expression_from_string expression_string
       if result_expression
         result_expression = CompositeExpression.new(result_expression, expression) 
       else
         result_expression =  expression
       end
-      log result_expression
+      log "#{result_expression} Satifying Config "+result_expression.satifying_configurations.to_s  
     end
+    log result_expression.deduct(engine.inhabitants)
+    log ""
     index += 1
+    counter += 1
   end
 end
