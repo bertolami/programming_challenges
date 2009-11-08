@@ -9,4 +9,8 @@ A: B is a human
 B: A is a demon
 A: B is a demon
 A: It is night
+3
+A: B is lying
+B: A is an angel
+A: I am not lying
 0

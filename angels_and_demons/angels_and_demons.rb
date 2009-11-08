@@ -22,10 +22,14 @@ class AngelsAndDemons
     rest = rest.strip
     negate = rest.include? "not"
     rest = rest.gsub /\s+not\s+/, ' ' if negate
-    if rest.include? "is a"
+    if rest.include? " is a "
       (subject, type) = rest.split " is a "
       @inhabitants << subject.to_sym
       SubjectTypeExpression.new speaker, subject, type, negate
+    elsif rest.include? " is an "
+        (subject, type) = rest.split " is an "
+        @inhabitants << subject.to_sym
+        SubjectTypeExpression.new speaker, subject, type, negate
     elsif rest.include? "I am a"
       type = rest.split(" ").pop
       SubjectTypeExpression.new speaker, speaker, type, negate
