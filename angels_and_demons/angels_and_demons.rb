@@ -1,8 +1,5 @@
 #/usr/bin/ruby
 
-def log s
-  #puts s.to_s
-end
 class AngelsAndDemons
   attr_reader :inhabitants
   
@@ -269,13 +266,13 @@ class SubjectLyingExpression < SubjectExpression
   end
 end
 
-#(input||=[]) << $_.chomp while gets  
 
-input = ["1", "B: I am an angel",  "1", "A: I am lying", "1", "M: I am a demon", "3", "A: B is a human", "B: A is a demon", "A: B is a demon", "0"]
+(input||=[]) << $_.chomp  while gets
+#input = ["1", "B: I am an angel",  "1", "A: I am lying", "1", "M: I am a demon", "3", "A: B is a human", "B: A is a demon", "A: B is a demon", "0"]
 counter = 1
 while true
-  exit if input[index||=0] =~ /^0$/ 
-  if input[index||=0] =~ /^\d+$/  
+  exit if input[index||=0] =~ /^\S*0\S*$/ 
+  if input[index||=0] =~ /^\S*\d+\S*$/  
     engine = AngelsAndDemons.new
     result_expression = nil
     1.upto(input[index].to_i) do |i|
