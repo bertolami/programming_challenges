@@ -1,7 +1,7 @@
 #/usr/bin/ruby
 
 def log s
-  puts s.to_s
+  #puts s.to_s
 end
 class AngelsAndDemons
   attr_reader :inhabitants
@@ -63,7 +63,7 @@ class Configuration
   end
 
   def eql? other
-    @daytime == other.daytime and @inhabitant_types == other.inhabitant_types
+   @daytime == other.daytime and @inhabitant_types == other.inhabitant_types
   end
   def hash
     @daytime.hash
@@ -72,9 +72,9 @@ class Configuration
   def to_s
     s = "|"
     @inhabitant_types.keys.each do |key|
-      s  += ("#{key} => "+ @inhabitant_types[key].to_s)
+      s  += (" #{key} => "+ @inhabitant_types[key].to_s)
     end
-    s += "(#{daytime})|"
+    s += " (#{daytime}) |"
   end
 end
 
@@ -94,7 +94,7 @@ class Expression
       @satifying_configurations.each do |c|
         inhabitant_types << c.inhabitant_type(inhabitant)
       end
-      facts << "#{inhabitant} is a #{inhabitant_types}" if inhabitant_types.uniq.size == 1
+      facts << "#{inhabitant} is a #{inhabitant_types.uniq}" if inhabitant_types.uniq.size == 1
     end
     daytimes = []
     @satifying_configurations.each do |c|
@@ -119,12 +119,20 @@ class CompositeExpression < Expression
   end
   
   def calculate_satifying_configurations
+    log "\ncomposing two expressions #{@expression_one} and #{@expression_two}"
+    tmp = []
      @expression_one.satifying_configurations.each do |c1|
         @expression_two.satifying_configurations.each do |c2|
+          tmp << "#{compose(c1, c2)}" if satisfied?(c1, c2)
           @satifying_configurations << compose(c1, c2) if satisfied?(c1, c2)
         end
      end
+     tmp = tmp.uniq
+     size = tmp.size
+     tmp = tmp.join("\n")
+     log "matching compositions \n#{tmp}"
      @satifying_configurations = @satifying_configurations.uniq
+     raise "uniq failed expected: \n#{size} \n but was #{@satifying_configurations.size} #{@satifying_configurations}\n" unless @satifying_configurations.size == size
   end
   
   def compose c1, c2
@@ -173,31 +181,36 @@ class SubjectExpression < SpeakerExpression
   
   def initial_configurations 
     configurations = []
-    affected_inhabitants.each do |speaker|
-      AngelsAndDemons.inhabitant_types.each do |speaker_type|  
-        affected_inhabitants.each do |subject|
-          if(speaker == subject) 
-            configurations << Configuration.new({speaker => speaker_type}, :day)
-            configurations << Configuration.new({speaker => speaker_type}, :night)
+    AngelsAndDemons.inhabitant_types.each do |speaker_type| 
+          if(@speaker == @subject) 
+            configurations << Configuration.new({@speaker => speaker_type}, :day)
+            configurations << Configuration.new({@speaker => speaker_type}, :night)
           else
             AngelsAndDemons.inhabitant_types.each do |subject_type|  
-              configurations << Configuration.new({speaker => speaker_type, subject => subject_type},:day)
-              configurations << Configuration.new({speaker => speaker_type, subject => subject_type},:night)
-            end
+              configurations << Configuration.new({@speaker => speaker_type, @subject => subject_type},:day)
+              configurations << Configuration.new({@speaker => speaker_type, @subject => subject_type},:night)
+            end  
           end
-        end
-      end
     end
     configurations.uniq
   end
   
   def calculate_satifying_configurations
+     log "\ncalculating a subject expression #{to_s}"
+     tmp = []
     initial_configurations.each do |c|
       satisfied =  satified?(c.inhabitant_type(self.speaker), c.inhabitant_type(@subject), c.daytime)
       if((not negate and satisfied) or (negate and not satisfied))
+        tmp << c
         @satifying_configurations << c 
       end
     end
+    tmp = tmp.uniq
+     size = tmp.size
+     tmp = tmp.join("\n")
+     log "matching compositions \n#{tmp}"
+     @satifying_configurations = @satifying_configurations.uniq
+     raise "uniq failed expected: \n#{size} \n but was #{@satifying_configurations.size} #{@satifying_configurations}\n" unless @satifying_configurations.size == size
   end
   
   def affected_inhabitants
@@ -292,12 +305,12 @@ end
 
 #(input||=[]) << $_.chomp while gets  
 
-input = ["1", "B: I am an angel",  "1", "A: I am lying", "1", "M: I am a demon", "3", "A: B is a human", "B: A is a demon", "A: B is a demon", "0"]
+input = ["3", "A: B is a human", "B: A is a demon", "A: B is a demon","1", "B: I am an angel",  "1", "A: I am lying", "1", "M: I am a demon",  "0"]
 counter = 1
 while true
   exit if input[index||=0] =~ /^0$/ 
   if input[index||=0] =~ /^\d+$/  
-    log "Conversation \##{counter}" 
+    puts "Conversation \##{counter}" 
     engine = AngelsAndDemons.new
     result_expression = nil
     1.upto(input[index].to_i) do |i|
@@ -309,10 +322,9 @@ while true
       else
         result_expression =  expression
       end
-      log "#{result_expression} Satifying Config "+result_expression.satifying_configurations.to_s  
     end
-    log result_expression.deduct(engine.inhabitants)
-    log ""
+    puts "#{result_expression}"
+    puts result_expression.deduct(engine.inhabitants) + "\n\n"
     index += 1
     counter += 1
   end
