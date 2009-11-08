@@ -4,8 +4,9 @@ B: I am an angel
 A: I am lying
 1
 M: I am a demon
-3
+4
 A: B is a human
 B: A is a demon
 A: B is a demon
+A: It is night
 0

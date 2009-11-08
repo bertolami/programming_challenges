@@ -239,7 +239,7 @@ class DayTimeExpression < SpeakerExpression
   end
   
   def to_s
-    "It is #{@daytime}" 
+    "#{@speaker}: It is #{@daytime}" 
   end
 end
 
