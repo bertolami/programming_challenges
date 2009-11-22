@@ -16,6 +16,7 @@ class AngelsAndDemons
   end
   
   def expression_from_string string
+    string = string.gsub /\.$/, ''
     (speaker, rest) = string.split ':'
     speaker = speaker.strip
     @inhabitants << speaker.to_sym
@@ -79,27 +80,36 @@ class Expression
   end
 
   def deduct inhabitants
-    return  "This is impossible" unless @satifying_configurations.size > 0
+    return  "This is impossible." unless @satifying_configurations.size > 0
     facts = []
     inhabitants.each do |inhabitant|
       inhabitant_types = []
       @satifying_configurations.each do |c|
         inhabitant_types << c.inhabitant_type(inhabitant)
       end
-      facts << "#{inhabitant} is a #{inhabitant_types.pop}" if inhabitant_types.uniq.size == 1
+      facts << "#{inhabitant} is #{article(inhabitant_types.pop)}." if inhabitant_types.uniq.size == 1
     end
     daytimes = []
     @satifying_configurations.each do |c|
       daytimes << c.daytime
     end
-    facts << "It is a #{daytimes.pop}" if daytimes.uniq.size == 1
+    facts << "It is #{daytimes.pop}." if daytimes.uniq.size == 1
     if facts.size == 0
-      "No facts are deducible"
+      "No facts are deducible."
     else
       facts.uniq.join "\n"
     end
       
    end
+   
+   def article inhabitant_type
+    if inhabitant_type == :angel
+      "an #{inhabitant_type}"
+    else
+      "a #{inhabitant_type}"
+    end
+   end
+   
 end
 
 class CompositeExpression < Expression
@@ -275,8 +285,8 @@ end
 #input = ["1", "B: I am an angel",  "1", "A: I am lying", "1", "M: I am a demon", "3", "A: B is a human", "B: A is a demon", "A: B is a demon", "0"]
 counter = 1
 while true
-  exit if input[index||=0] =~ /^\S*0\S*$/ 
-  if input[index||=0] =~ /^\S*\d+\S*$/  
+  exit if input[index||=0] =~ /^\s*0\s*$/ 
+  if input[index||=0] =~ /^\s*\d+\s*$/  
     engine = AngelsAndDemons.new
     result_expression = nil
     1.upto(input[index].to_i) do |i|
@@ -288,7 +298,7 @@ while true
         result_expression =  expression
       end
     end
-    puts "Conversation \##{counter} (#{result_expression})"
+    puts "Conversation \##{counter}"
     puts result_expression.deduct(engine.inhabitants) + "\n\n"
     index += 1
     counter += 1
