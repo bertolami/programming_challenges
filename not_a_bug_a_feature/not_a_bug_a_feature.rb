@@ -37,9 +37,20 @@ class State
     stateBug == matcherBug or matcherBug == "0"
   end
   
-  def nextStates transition
+  def bug(stateBug, applierBug)
+     if applierBug == "0"
+       stateBug
+     else 
+       applierBug
+     end
+  end
+  
+  def nextState transition
     if(applies? transition) 
-      # todo
+      stateString = ""
+      0.upto(@stateString.length-1) do |i|
+        stateString << bug(@stateString[i..i], transition.applier[i..i])    
+      end
     else
       nil
     end
