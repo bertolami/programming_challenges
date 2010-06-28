@@ -21,6 +21,31 @@ class Transition
   end
 end
 
+class State
+  def initialize stateString
+    @stateString = stateString
+  end
+  
+  def applies? transition
+    0.upto(@stateString.length-1) do |i|
+      return false if(not matchingBug(@stateString[i..i], transition.matcher[i..i]))    
+    end
+    true
+  end
+  
+  def matchingBug(stateBug, matcherBug)
+    stateBug == matcherBug or matcherBug == "0"
+  end
+  
+  def nextStates transition
+    if(applies? transition) 
+      # todo
+    else
+      nil
+    end
+  end
+end
+
 def log string
   puts "- #{string}"
 end
