@@ -6,38 +6,39 @@ class NotABugAFeature
   def initialize n
     @transitions = Array.new
     @open_states = Array.new
-    @closed_states = Hash.new
-    @open_states << State.new("-" * n, 0)
+    @visited_states = Hash.new
+    initial_state = State.new("+" * n, 0)
+    @open_states << initial_state
+    @visited_states[initial_state.state_string] = initial_state
     @distance_to_goal = -1
-    @goal_string = "+" * n
+    @goal_string = "-" * n
   end
  
   def run
     log @open_states
     while @open_states.size > 0
       state = @open_states.shift
-      if not contains_closer_existing state
-        @closed_states[state.state_string] = state
-      end
-      log state
+      
       @transitions.each do |transition|
         next_state = state.next_state transition
+        log "#{state} -> #{next_state} (#{transition})"
         if next_state
-          if (@goal_string == next_state.state_string)
-            if @distance_to_goal == -1 or @distance_to_goal > next_state.distance
-              @distance_to_goal = next_state.distance  
+          if not contains_closer_existing next_state
+            log "no closer state than #{next_state}"
+            @visited_states[next_state.state_string] = next_state
+            @open_states << next_state
+            if (@goal_string == next_state.state_string)
+              if @distance_to_goal == -1 or @distance_to_goal > next_state.distance
+                @distance_to_goal = next_state.distance  
+              end
             end
-          else
-            if not contains_closer_existing next_state
-              @open_states << next_state
-            end
-          end
+          end        
         end
       end
     end
   end
   def contains_closer_existing state
-      existing = @closed_states[state.state_string]
+      existing = @visited_states[state.state_string]
       existing and existing.distance < state.distance
   end
   
@@ -101,7 +102,7 @@ class State
 end
 
 def log string
-  puts "- #{string}"
+#  puts "- #{string}"
 end
 
 input = []
@@ -124,7 +125,11 @@ while true
     
     puts "Product #{caze}"
     engine.run
-    puts "minimal distance #{engine.distance_to_goal}"
+    if(engine.distance_to_goal >= 0) 
+      puts "Shortest Sequence takes 7 patches."
+    else
+      puts "Bugs cannot be fixed"
+    end
     index += 1
   end
 end
