@@ -15,16 +15,12 @@ class NotABugAFeature
   end
  
   def run
-    log @open_states
-    while @open_states.size > 0
-      state = @open_states.shift
-      
+     while @open_states.size > 0
+      state = @open_states.shift  
       @transitions.each do |transition|
         next_state = state.next_state transition
-        log "#{state} -> #{next_state} (#{transition})"
         if next_state
           if not contains_closer_existing next_state
-            log "no closer state than #{next_state}"
             @visited_states[next_state.state_string] = next_state
             @open_states << next_state
             if (@goal_string == next_state.state_string)
@@ -37,6 +33,7 @@ class NotABugAFeature
       end
     end
   end
+  
   def contains_closer_existing state
       existing = @visited_states[state.state_string]
       existing and existing.distance < state.distance
@@ -50,17 +47,15 @@ end
 
 class Transition
   attr_reader :matcher, :applier
+
   def initialize(transitionString)
     (@matcher, @applier) = transitionString.split(/\s+/)
-  end
-  
-  def to_s
-    "#{@matcher} -> #{@applier}"
   end
 end
 
 class State
   attr_accessor :state_string, :distance
+  
   def initialize state_string, distance
     @state_string = state_string
     @distance = distance
@@ -78,11 +73,7 @@ class State
   end
   
   def bug(stateBug, applierBug)
-     if applierBug == "0"
-       stateBug
-     else 
-       applierBug
-     end
+     applierBug == "0" ? stateBug : applierBug
   end
   
   def next_state transition
@@ -96,14 +87,8 @@ class State
       nil
     end
   end
-  def to_s
-    "#{@state_string} (#{@distance})"
-  end
 end
 
-def log string
-#  puts "- #{string}"
-end
 
 input = []
 while gets
@@ -121,8 +106,7 @@ while true
     1.upto(m) do |i|
       index += 1
       engine.transitions << Transition.new(input[index])
-    end
-    
+    end 
     puts "Product #{caze}"
     engine.run
     if(engine.distance_to_goal >= 0) 
