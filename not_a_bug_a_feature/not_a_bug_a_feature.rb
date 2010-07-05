@@ -19,7 +19,7 @@ class NotABugAFeature
       state = @open_states.shift  
       @transitions.each do |transition|
         next_state = state.next_state transition
-        if next_state
+        if next_state and (@distance_to_goal == -1 or @distance_to_goal > next_state.distance)
           if not contains_closer_existing next_state
             @visited_states[next_state.state_string] = next_state
             @open_states << next_state
@@ -35,12 +35,7 @@ class NotABugAFeature
   end
   
   def contains_closer_existing state
-      existing = @visited_states[state.state_string]
-      existing and existing.distance < state.distance
-  end
-  
-  def goal? state_string
-    @goal_string == state_string
+      @visited_states[state.state_string] and @visited_states[state.state_string].distance < state.distance
   end
   
 end
@@ -110,7 +105,7 @@ while true
     puts "Product #{caze}"
     engine.run
     if(engine.distance_to_goal >= 0) 
-      puts "Shortest Sequence takes 7 patches."
+      puts "Shortest Sequence takes #{engine.distance_to_goal} patches."
     else
       puts "Bugs cannot be fixed"
     end
