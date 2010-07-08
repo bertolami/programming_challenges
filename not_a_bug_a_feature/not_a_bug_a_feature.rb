@@ -15,8 +15,9 @@ class NotABugAFeature
   end
  
   def run
+    distance=0
      while @open_states.size > 0
-      state = @open_states.shift  
+      state = @open_states.shift
       @transitions.each do |transition|
         next_state = state.next_state transition
         if next_state and (@distance_to_goal == -1 or @distance_to_goal > next_state.distance)
@@ -34,6 +35,7 @@ class NotABugAFeature
     end
   end
   
+  private 
   def contains_closer_existing state
       @visited_states[state.state_string] and @visited_states[state.state_string].distance < state.distance
   end
@@ -56,21 +58,7 @@ class State
     @distance = distance
   end
   
-  def applies? transition
-    0.upto(@state_string.length-1) do |i|
-      return false if(not matching_bug(@state_string[i..i], transition.matcher[i..i]))    
-    end
-    true
-  end
-  
-  def matching_bug(stateBug, matcherBug)
-    stateBug == matcherBug or matcherBug == "0"
-  end
-  
-  def bug(stateBug, applierBug)
-     applierBug == "0" ? stateBug : applierBug
-  end
-  
+ 
   def next_state transition
     if(applies? transition) 
       state_string = ""
@@ -82,6 +70,23 @@ class State
       nil
     end
   end
+  
+  private 
+  def applies? transition
+     0.upto(@state_string.length-1) do |i|
+       return false if(not matching_bug(@state_string[i..i], transition.matcher[i..i]))    
+     end
+     true
+   end
+
+   def matching_bug(stateBug, matcherBug)
+     stateBug == matcherBug or matcherBug == "0"
+   end
+
+   def bug(stateBug, applierBug)
+      applierBug == "0" ? stateBug : applierBug
+   end
+  
 end
 
 
@@ -105,10 +110,11 @@ while true
     puts "Product #{caze}"
     engine.run
     if(engine.distance_to_goal >= 0) 
-      puts "Shortest Sequence takes #{engine.distance_to_goal} patches."
+      puts "Shortest sequence takes #{engine.distance_to_goal} patches."
     else
-      puts "Bugs cannot be fixed"
+      puts "Bugs cannot be fixed."
     end
+    puts
     index += 1
   end
 end
